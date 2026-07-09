@@ -1,0 +1,14 @@
+{
+  "name": "anivexa-microservice",
+  "version": "1.0.0",
+  "description": "Standalone anime stream resolver and proxy using native providers",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "bun run src/server.js",
+    "dev": "bun --watch src/server.js"
+  },
+  "dependencies": {
+    "hono": "^4.0.0"
+  }
+}

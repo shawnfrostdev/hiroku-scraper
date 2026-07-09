@@ -1,0 +1,110 @@
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { AnimeScraper } from './anime-scraper.js';
+import { AnivexaProxy } from './anivexa-proxy.js';
+
+const app = new Hono();
+const scraper = new AnimeScraper();
+const PORT = 4000;
+
+// Enable CORS
+app.use('*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'OPTIONS'],
+}));
+
+// Route: Get Aggregated Episodes listings from all scrapers
+app.get('/api/episodes/:anilistId', async (c) => {
+  const anilistId = c.req.param('anilistId');
+  try {
+    const data = await scraper.getAggregatedEpisodes(anilistId);
+    return c.json(data);
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Route: Resolve Stream Sources & Subtitles directly from Provider scraper
+app.get('/api/watch/:providerId/:anilistId/:audio/:epNum', async (c) => {
+  const providerId = c.req.param('providerId');
+  const anilistId = c.req.param('anilistId');
+  const audio = c.req.param('audio');
+  const epNum = c.req.param('epNum');
+
+  try {
+    let sourceData = await scraper.watch(providerId, anilistId, audio, epNum);
+
+    // Normalize nested responses (like anikoto/Solaris which returns { ssub: { streams, subtitles } })
+    if (sourceData.ssub || sourceData.sdub) {
+      const nested = sourceData.ssub || sourceData.sdub;
+      sourceData = {
+        streams: nested.streams || [],
+        subtitles: nested.subtitles || nested.tracks || [],
+        intro: nested.intro || null,
+        outro: nested.outro || null,
+        headers: nested.headers || sourceData.headers || {}
+      };
+    }
+
+    // Standardize key name for subtitle tracks
+    if (sourceData && Array.isArray(sourceData.tracks) && !sourceData.subtitles) {
+      sourceData.subtitles = sourceData.tracks;
+    }
+
+    // Rewrite HLS links to run through our local proxy
+    if (sourceData && Array.isArray(sourceData.streams)) {
+      const referer = sourceData.headers?.Referer || sourceData.headers?.referer || '';
+      sourceData.streams = sourceData.streams.map(src => {
+        const url = src.url || src.file;
+        if (url && (src.type === 'video/mpegurl' || src.type === 'hls' || url.includes('.m3u8'))) {
+          const proxiedUrl = `http://localhost:${PORT}/proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(referer)}`;
+          return {
+            ...src,
+            originalUrl: url,
+            url: proxiedUrl,
+            file: proxiedUrl,
+            proxied: true
+          };
+        }
+        return src;
+      });
+    }
+
+    return c.json(sourceData);
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Route: Stream Proxy Bypass
+app.get('/proxy', async (c) => {
+  const url = c.req.query('url');
+  const ref = c.req.query('ref');
+
+  if (!url) {
+    return c.text('Missing url parameter', 400);
+  }
+
+  const proxyBaseUrl = `http://localhost:${PORT}/proxy`;
+  const result = await AnivexaProxy.handleRequest(url, ref, proxyBaseUrl);
+
+  // Set response headers
+  Object.entries(result.headers).forEach(([k, v]) => {
+    c.header(k, v);
+  });
+
+  c.status(result.status);
+
+  // Return binary body or text
+  if (result.body instanceof Uint8Array) {
+    return c.body(result.body);
+  }
+  return c.text(result.body);
+});
+
+console.log(`Standalone Anime Scraper Microservice running on http://localhost:${PORT}`);
+
+export default {
+  port: PORT,
+  fetch: app.fetch,
+};

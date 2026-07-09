@@ -1,0 +1,10 @@
+node_modules
+.git
+.dockerignore
+Dockerfile
+docker-compose.yml
+example.js
+test-api.js
+task.md
+walkthrough.md
+implementation_plan.md

@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  anime-scraper:
+    build: .
+    container_name: anime-scraper-service
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+    environment:
+      - PORT=4000
