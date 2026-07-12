@@ -13,6 +13,13 @@ app.use('*', cors({
   allowMethods: ['GET', 'OPTIONS'],
 }));
 
+// Helper to get the base URL of the incoming request
+const getBaseUrl = (c) => {
+  const host = c.req.header('host') || `localhost:${PORT}`;
+  const protocol = c.req.header('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+  return `${protocol}://${host}`;
+};
+
 // Route: Get Aggregated Episodes listings from all scrapers
 app.get('/api/episodes/:anilistId', async (c) => {
   const anilistId = c.req.param('anilistId');
@@ -30,6 +37,7 @@ app.get('/api/watch/:providerId/:anilistId/:audio/:epNum', async (c) => {
   const anilistId = c.req.param('anilistId');
   const audio = c.req.param('audio');
   const epNum = c.req.param('epNum');
+  const baseUrl = getBaseUrl(c);
 
   try {
     let sourceData = await scraper.watch(providerId, anilistId, audio, epNum);
@@ -57,7 +65,7 @@ app.get('/api/watch/:providerId/:anilistId/:audio/:epNum', async (c) => {
       sourceData.streams = sourceData.streams.map(src => {
         const url = src.url || src.file;
         if (url && (src.type === 'video/mpegurl' || src.type === 'hls' || url.includes('.m3u8'))) {
-          const proxiedUrl = `http://localhost:${PORT}/proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(referer)}`;
+          const proxiedUrl = `${baseUrl}/proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(referer)}`;
           return {
             ...src,
             originalUrl: url,
@@ -80,12 +88,13 @@ app.get('/api/watch/:providerId/:anilistId/:audio/:epNum', async (c) => {
 app.get('/proxy', async (c) => {
   const url = c.req.query('url');
   const ref = c.req.query('ref');
+  const baseUrl = getBaseUrl(c);
 
   if (!url) {
     return c.text('Missing url parameter', 400);
   }
 
-  const proxyBaseUrl = `http://localhost:${PORT}/proxy`;
+  const proxyBaseUrl = `${baseUrl}/proxy`;
   const result = await AnivexaProxy.handleRequest(url, ref, proxyBaseUrl);
 
   // Set response headers
