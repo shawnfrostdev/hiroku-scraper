@@ -420,16 +420,21 @@ async function resolveIds(anilistId) {
 }
 __name(resolveIds, "resolveIds");
 async function findSlug(title2) {
-  const data = await fetch(`${BASE}/api/search?${new URLSearchParams({ q: title2, limit: 5 })}`, { headers: H }).then(async (r) => {
-    const _raw = await r.text();
-    if (!r.ok) { const _e = new Error(`reanime search ${r.status}`); _e.rawBody = _raw; throw _e; }
-    try { return JSON.parse(_raw); } catch (_pe) { _pe.rawBody = _raw; throw _pe; }
-  });
-  const results = Array.isArray(data) ? data : data.results ?? data.data ?? [];
-  if (!results.length) throw new Error(`No reanime results for "${title2}"`);
-  const id = results[0].anime_id ?? results[0].slug ?? results[0].id;
-  if (!id) throw new Error("Could not extract anime_id from reanime result");
-  return id;
+  try {
+    const data = await fetch(`${BASE}/api/search?${new URLSearchParams({ q: title2, limit: 5 })}`, { headers: H }).then(async (r) => {
+      const _raw = await r.text();
+      if (!r.ok) { const _e = new Error(`reanime search ${r.status}`); _e.rawBody = _raw; throw _e; }
+      try { return JSON.parse(_raw); } catch (_pe) { _pe.rawBody = _raw; throw _pe; }
+    });
+    const results = Array.isArray(data) ? data : data.results ?? data.data ?? [];
+    if (!results.length) throw new Error(`No reanime results for "${title2}"`);
+    const id = results[0].anime_id ?? results[0].slug ?? results[0].id;
+    if (!id) throw new Error("Could not extract anime_id from reanime result");
+    return id;
+  } catch (err) {
+    console.warn(`[Orion] Search failed (${err.message}), falling back to guessed slug.`);
+    return title2.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
 }
 __name(findSlug, "findSlug");
 async function jikanFetch2(url, retries = 4) {
