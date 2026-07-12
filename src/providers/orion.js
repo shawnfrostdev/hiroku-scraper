@@ -658,11 +658,11 @@ var reanime_default = {
       let m;
       if (path === "/healthz") return json3({ status: "ok", provider: "reanime" });
       if (path === "/proxy") return await handleProxy3(url);
-      m = path.match(/^\/episodes\/(\d+)$/);
+      m = path.match(/^\/episodes\/reanime\/(\d+)$/);
       if (m) return await handleEpisodes3(m[1], url);
-      m = path.match(/^\/watch\/(\d+)\/(sub|dub)\/(\d+)$/);
+      m = path.match(/^\/watch\/reanime\/(\d+)\/(sub|dub)\/reanime-(\d+)$/);
       if (m) return await handleWatch3(m[1], m[2], m[3], url.origin);
-      m = path.match(/^\/stream\/(\d+)\/(sub|dub)\/(\d+)$/);
+      m = path.match(/^\/stream\/reanime\/(\d+)\/(sub|dub)\/reanime-(\d+)$/);
       if (m) return await handleStream3(m[1], m[2], m[3]);
       return json3({ error: "Not found", routes: ["GET /episodes/:anilistId", "GET /watch/:anilistId/sub|dub/:ep", "GET /stream/:anilistId/sub|dub/:ep", "GET /proxy?url=&referer="] }, 404);
     } catch (err) {
