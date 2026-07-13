@@ -59,10 +59,12 @@ app.get('/api/watch/:providerId/:anilistId/:audio/:epNum', async (c) => {
       sourceData.subtitles = sourceData.tracks;
     }
 
-    // Rewrite HLS links to run through our local proxy
-    if (sourceData && Array.isArray(sourceData.streams)) {
+    // Rewrite HLS links and Subtitles to run through our local proxy
+    if (sourceData) {
       const referer = sourceData.headers?.Referer || sourceData.headers?.referer || '';
-      sourceData.streams = sourceData.streams.map(src => {
+      
+      if (Array.isArray(sourceData.streams)) {
+        sourceData.streams = sourceData.streams.map(src => {
         const url = src.url || src.file;
         if (url && (src.type === 'video/mpegurl' || src.type === 'hls' || url.includes('.m3u8'))) {
           const proxiedUrl = `${baseUrl}/proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(referer)}`;
@@ -76,6 +78,25 @@ app.get('/api/watch/:providerId/:anilistId/:audio/:epNum', async (c) => {
         }
         return src;
       });
+      }
+
+      if (Array.isArray(sourceData.subtitles)) {
+        sourceData.subtitles = sourceData.subtitles.map(sub => {
+          const url = sub.file || sub.url;
+          if (url && (url.startsWith('http') || url.startsWith('//'))) {
+            const absoluteUrl = url.startsWith('//') ? 'https:' + url : url;
+            const proxiedUrl = `${baseUrl}/proxy?url=${encodeURIComponent(absoluteUrl)}&ref=${encodeURIComponent(referer)}`;
+            return {
+              ...sub,
+              originalUrl: absoluteUrl,
+              file: proxiedUrl,
+              url: proxiedUrl,
+              proxied: true
+            };
+          }
+          return sub;
+        });
+      }
     }
 
     return c.json(sourceData);
