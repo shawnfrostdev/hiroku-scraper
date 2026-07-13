@@ -3,7 +3,6 @@ const PROVIDERS = {
   nexus: './providers/nexus.js',
   prism: './providers/prism.js',
   lynx: './providers/lynx.js',
-  orion: './providers/orion.js',
   frost: './providers/frost.js',
   lunar: './providers/lunar.js'
 };
@@ -48,7 +47,6 @@ export class AnimeScraper {
     if (providerId === 'nexus') matchedId = 'anidbapp';
     if (providerId === 'prism') matchedId = 'animegg';
     if (providerId === 'lynx') matchedId = 'anineko';
-    if (providerId === 'orion') matchedId = 'reanime';
 
     const fakeUrl = `http://localhost/watch/${matchedId}/${anilistId}/${audio}/${matchedId}-${epNum}`;
     const req = new Request(fakeUrl);
