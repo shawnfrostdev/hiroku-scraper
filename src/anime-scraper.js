@@ -1,7 +1,6 @@
 const PROVIDERS = {
+  megu: './providers/megu.js',
   solaris: './providers/solaris.js',
-  nexus: './providers/nexus.js',
-  prism: './providers/prism.js',
   lynx: './providers/lynx.js',
   frost: './providers/frost.js',
   lunar: './providers/lunar.js'
@@ -44,8 +43,6 @@ export class AnimeScraper {
     // Construct request conforming to provider's RegExp matchers (base key used inside provider files)
     let matchedId = providerId;
     if (providerId === 'solaris') matchedId = 'anikoto';
-    if (providerId === 'nexus') matchedId = 'anidbapp';
-    if (providerId === 'prism') matchedId = 'animegg';
     if (providerId === 'lynx') matchedId = 'anineko';
 
     const fakeUrl = `http://localhost/watch/${matchedId}/${anilistId}/${audio}/${matchedId}-${epNum}`;
@@ -57,7 +54,43 @@ export class AnimeScraper {
       throw new Error(`Provider watch request failed: ${response.status} - ${errText}`);
     }
 
-    return response.json();
+    let sourceData = await response.json();
+
+    // Normalize nested responses (like anikoto/Solaris which returns { ssub: { streams, subtitles } })
+    if (sourceData.ssub || sourceData.sdub) {
+      const nested = sourceData.ssub || sourceData.sdub;
+      sourceData = {
+        streams: nested.streams || [],
+        subtitles: nested.subtitles || nested.tracks || [],
+        intro: nested.intro || null,
+        outro: nested.outro || null,
+        headers: nested.headers || sourceData.headers || {}
+      };
+    }
+
+    // Standardize subtitles field
+    if (sourceData && Array.isArray(sourceData.tracks) && !sourceData.subtitles) {
+      sourceData.subtitles = sourceData.tracks;
+    }
+
+    // Distinguish each stream's category (sub, dub, softsub)
+    if (sourceData && Array.isArray(sourceData.streams)) {
+      const hasSubtitles = Array.isArray(sourceData.subtitles) && sourceData.subtitles.length > 0;
+      sourceData.streams = sourceData.streams.map(src => {
+        let category = 'sub';
+        if (audio === 'dub' || src.audio === 'dub') {
+          category = 'dub';
+        } else if (hasSubtitles) {
+          category = 'softsub';
+        }
+        return {
+          ...src,
+          category
+        };
+      });
+    }
+
+    return sourceData;
   }
 
   /**

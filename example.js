@@ -6,14 +6,14 @@ async function main() {
 
   console.log(`[Example] Testing Clean Restructured Scrapers...`);
   try {
-    const targets = ['solaris', 'frost', 'lunar', 'lynx', 'prism'];
+    const targets = ['megu', 'solaris', 'frost', 'lunar', 'lynx'];
     
     for (const providerId of targets) {
       console.log(`\n-----------------------------------------`);
       console.log(`[Example] Resolving user-facing provider: "${providerId}"...`);
       try {
         const episodesData = await scraper.getEpisodes(providerId, anilistId);
-        const subEpisodes = episodesData.episodes.sub || [];
+        const subEpisodes = episodesData.episodes.sub || episodesData.episodes.softsub || [];
         const ep1 = subEpisodes.find(e => Number(e.number) === 1);
         
         if (!ep1) {
@@ -39,6 +39,7 @@ async function main() {
         console.log(`[Example] watch() succeeded for ${providerId}!`);
         console.log(`[Example] Streams count: ${watchData.streams?.length || 0}`);
         console.log(`[Example] Sample Stream URL: ${watchData.streams?.[0]?.url || 'None'}`);
+        console.log(`[Example] Sample Stream Category: ${watchData.streams?.[0]?.category || 'None'}`);
         console.log(`[Example] Subtitles count: ${watchData.subtitles?.length || 0}`);
       } catch (e) {
         console.log(`[Example] Resolution failed for ${providerId}: ${e.message}`);

@@ -42,42 +42,25 @@ app.get('/api/watch/:providerId/:anilistId/:audio/:epNum', async (c) => {
   try {
     let sourceData = await scraper.watch(providerId, anilistId, audio, epNum);
 
-    // Normalize nested responses (like anikoto/Solaris which returns { ssub: { streams, subtitles } })
-    if (sourceData.ssub || sourceData.sdub) {
-      const nested = sourceData.ssub || sourceData.sdub;
-      sourceData = {
-        streams: nested.streams || [],
-        subtitles: nested.subtitles || nested.tracks || [],
-        intro: nested.intro || null,
-        outro: nested.outro || null,
-        headers: nested.headers || sourceData.headers || {}
-      };
-    }
-
-    // Standardize key name for subtitle tracks
-    if (sourceData && Array.isArray(sourceData.tracks) && !sourceData.subtitles) {
-      sourceData.subtitles = sourceData.tracks;
-    }
-
     // Rewrite HLS links and Subtitles to run through our local proxy
     if (sourceData) {
       const referer = sourceData.headers?.Referer || sourceData.headers?.referer || '';
       
       if (Array.isArray(sourceData.streams)) {
         sourceData.streams = sourceData.streams.map(src => {
-        const url = src.url || src.file;
-        if (url && (src.type === 'video/mpegurl' || src.type === 'hls' || url.includes('.m3u8'))) {
-          const proxiedUrl = `${baseUrl}/proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(referer)}`;
-          return {
-            ...src,
-            originalUrl: url,
-            url: proxiedUrl,
-            file: proxiedUrl,
-            proxied: true
-          };
-        }
-        return src;
-      });
+          const url = src.url || src.file;
+          if (url && (src.type === 'video/mpegurl' || src.type === 'hls' || url.includes('.m3u8'))) {
+            const proxiedUrl = `${baseUrl}/proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(referer)}`;
+            return {
+              ...src,
+              originalUrl: url,
+              url: proxiedUrl,
+              file: proxiedUrl,
+              proxied: true
+            };
+          }
+          return src;
+        });
       }
 
       if (Array.isArray(sourceData.subtitles)) {
