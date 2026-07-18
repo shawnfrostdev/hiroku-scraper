@@ -50,7 +50,7 @@ export async function getEpisodes(anilistId, ctx = {}) {
     // If not matched via availability endpoint, fallback to expected count from other metadata
     const expected = expectedCount(media, ctx.anizip, ctx.jikanEps) || 12;
     subCount = expected;
-    dubCount = expected;
+    dubCount = 0; // Default to 0 dubs for unmatched titles to avoid showing invalid dub options
   }
   
   const sub = [];
