@@ -108,8 +108,8 @@ app.get('/proxy', async (c) => {
 
   c.status(result.status);
 
-  // Return binary body or text
-  if (result.body instanceof Uint8Array) {
+  // Return stream body, binary body, or text
+  if (result.body instanceof Uint8Array || (result.body && typeof result.body === 'object')) {
     return c.body(result.body);
   }
   return c.text(result.body);

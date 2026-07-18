@@ -98,7 +98,6 @@ export class AnivexaProxy {
       }
 
       // Otherwise, return direct stream response
-      const buffer = await response.arrayBuffer();
       const resHeaders = {
         'Content-Type': contentType,
         'Access-Control-Allow-Origin': '*',
@@ -112,7 +111,7 @@ export class AnivexaProxy {
 
       return {
         status: 200,
-        body: new Uint8Array(buffer),
+        body: response.body || new Uint8Array(await response.arrayBuffer()),
         headers: resHeaders
       };
     } catch (err) {
