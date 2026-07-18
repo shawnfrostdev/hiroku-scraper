@@ -113,11 +113,9 @@ export async function scrapeEpisodeWatch(anilistId, epNum, audio) {
   const endpoints = [
     // 1. Miruro API (Source 1)
     `${BASE}/api/miruro?al=${anilistId}&ep=${epNum}&lang=${audio}`,
-    // 2. Kiwi API (Source 2)
-    `${BASE}/api/kiwi?al=${anilistId}&ep=${epNum}&lang=${audio}`,
   ];
   
-  // Call all endpoints in parallel and collect whatever is available
+  // Call endpoint and collect available stream/subtitles
   const results = await Promise.allSettled(
     endpoints.map(url => 
       fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
@@ -125,10 +123,10 @@ export async function scrapeEpisodeWatch(anilistId, epNum, audio) {
     )
   );
   
-  results.forEach((res, index) => {
+  results.forEach((res) => {
     if (res.status !== 'fulfilled' || !res.value) return;
     const data = res.value;
-    const serverPrefix = index === 0 ? 'Megu-Source-1' : 'Megu-Source-2';
+    const serverPrefix = 'Megu';
     
     // Extract stream url
     if (data.source) {
@@ -138,22 +136,6 @@ export async function scrapeEpisodeWatch(anilistId, epNum, audio) {
         audio: audio,
         server: serverPrefix,
         referer: BASE
-      });
-    }
-    
-    // Extract qualities from Kiwi/others
-    if (Array.isArray(data.qualities)) {
-      data.qualities.forEach(q => {
-        if (q.source) {
-          streams.push({
-            url: q.source,
-            type: q.source.includes('.m3u8') ? 'hls' : 'embed',
-            audio: audio,
-            server: `${serverPrefix}-${q.label || 'unknown'}`,
-            quality: q.label || 'unknown',
-            referer: BASE
-          });
-        }
       });
     }
     
