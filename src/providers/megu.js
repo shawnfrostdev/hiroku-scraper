@@ -111,18 +111,11 @@ export async function scrapeEpisodeWatch(anilistId, epNum, audio) {
   let outro = null;
   
   const endpoints = [
-    // 1. Standard stream API (returns tracks/subtitles and intro/outro)
-    `${BASE}/api/stream?ani=${anilistId}&ep=${epNum}&lang=${audio}`,
-    // 2. Kiwi API (returns qualities)
-    `${BASE}/api/kiwi?al=${anilistId}&ep=${epNum}&lang=${audio}`,
-    // 3. Miruro API
+    // 1. Miruro API (Source 1)
     `${BASE}/api/miruro?al=${anilistId}&ep=${epNum}&lang=${audio}`,
+    // 2. Kiwi API (Source 2)
+    `${BASE}/api/kiwi?al=${anilistId}&ep=${epNum}&lang=${audio}`,
   ];
-  
-  if (audio === 'dub') {
-    // 4. Dub API
-    endpoints.push(`${BASE}/api/dub?al=${anilistId}&ep=${epNum}`);
-  }
   
   // Call all endpoints in parallel and collect whatever is available
   const results = await Promise.allSettled(
@@ -135,6 +128,7 @@ export async function scrapeEpisodeWatch(anilistId, epNum, audio) {
   results.forEach((res, index) => {
     if (res.status !== 'fulfilled' || !res.value) return;
     const data = res.value;
+    const serverPrefix = index === 0 ? 'Megu-Source-1' : 'Megu-Source-2';
     
     // Extract stream url
     if (data.source) {
@@ -142,7 +136,7 @@ export async function scrapeEpisodeWatch(anilistId, epNum, audio) {
         url: data.source,
         type: data.source.includes('.m3u8') ? 'hls' : 'embed',
         audio: audio,
-        server: `Megu-${index === 0 ? 'Primary' : index === 1 ? 'Kiwi' : index === 2 ? 'Miruro' : 'Dub'}`,
+        server: serverPrefix,
         referer: BASE
       });
     }
@@ -155,7 +149,7 @@ export async function scrapeEpisodeWatch(anilistId, epNum, audio) {
             url: q.source,
             type: q.source.includes('.m3u8') ? 'hls' : 'embed',
             audio: audio,
-            server: `Megu-Kiwi-${q.label || 'unknown'}`,
+            server: `${serverPrefix}-${q.label || 'unknown'}`,
             quality: q.label || 'unknown',
             referer: BASE
           });
@@ -172,7 +166,7 @@ export async function scrapeEpisodeWatch(anilistId, epNum, audio) {
             url,
             type: url.includes('.m3u8') ? 'hls' : 'embed',
             audio: audio,
-            server: `Megu-Source-${src.r || 'default'}`,
+            server: serverPrefix,
             referer: BASE
           });
         }
